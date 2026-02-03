@@ -10,13 +10,14 @@ export async function onRequestPost(context) {
       });
     }
 
-    // Forward the CSV to the n8n webhook as binary (exactly like Postman does)
+    // Build a proper file upload — exactly like Postman binary file upload
+    const formData = new FormData();
+    const blob = new Blob([csvData], { type: 'text/csv' });
+    formData.append('file', blob, 'leads.csv');
+
     const response = await fetch(webhookUrl, {
       method: 'POST',
-      body: csvData,
-      headers: {
-        'Content-Type': 'text/csv',
-      },
+      body: formData,
     });
 
     const responseText = await response.text();

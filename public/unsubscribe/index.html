@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unsubscribe</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f1117; color: #e0e0e0;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .container {
+      background: #1a1d27; border-radius: 16px; padding: 48px 40px;
+      max-width: 480px; width: 100%; text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .icon { font-size: 48px; margin-bottom: 16px; }
+    h1 { font-size: 24px; margin-bottom: 12px; color: #ffffff; }
+    .description { color: #9ca3af; font-size: 16px; line-height: 1.6; margin-bottom: 32px; }
+    .email-display {
+      background: #252830; border: 1px solid #3a3d4a; border-radius: 8px;
+      padding: 14px 20px; font-size: 16px; color: #60a5fa; margin-bottom: 24px; word-break: break-all;
+    }
+    .btn {
+      display: inline-block; padding: 14px 32px; border-radius: 8px;
+      font-size: 16px; font-weight: 600; cursor: pointer; border: none;
+      transition: all 0.2s; width: 100%;
+    }
+    .btn-unsubscribe { background: #dc2626; color: white; }
+    .btn-unsubscribe:hover { background: #b91c1c; }
+    .btn-unsubscribe:disabled { background: #555; cursor: not-allowed; }
+    .success-container { display: none; }
+    .success-container.show { display: block; }
+    .success-icon { font-size: 64px; margin-bottom: 16px; }
+    .success-container h1 { color: #4ade80; }
+    .error-msg {
+      background: #3b1818; border: 1px solid #dc2626; color: #fca5a5;
+      padding: 12px 16px; border-radius: 8px; margin-bottom: 16px;
+      display: none; font-size: 14px;
+    }
+    .error-msg.show { display: block; }
+    .no-email-container { display: none; }
+    .no-email-container.show { display: block; }
+    .form-container { display: none; }
+    .form-container.show { display: block; }
+    .spinner {
+      display: none; width: 24px; height: 24px;
+      border: 3px solid rgba(255,255,255,0.2); border-top-color: white;
+      border-radius: 50%; animation: spin 0.6s linear infinite; margin: 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .note { color: #6b7280; font-size: 13px; margin-top: 24px; line-height: 1.5; }
+    .manual-form { margin: 24px 0; }
+    .manual-form input {
+      width: 100%; padding: 14px 20px; border-radius: 8px;
+      border: 1px solid #3a3d4a; background: #252830; color: #e0e0e0;
+      font-size: 16px; margin-bottom: 12px; outline: none;
+    }
+    .manual-form input:focus { border-color: #60a5fa; }
+    .manual-form button {
+      width: 100%; padding: 14px 32px; border-radius: 8px;
+      font-size: 16px; font-weight: 600; cursor: pointer; border: none;
+      background: #dc2626; color: white; transition: all 0.2s;
+    }
+    .manual-form button:hover { background: #b91c1c; }
+    .manual-form button:disabled { background: #555; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="no-email-container" id="noEmail">
+    <div class="icon">📧</div>
+    <h1>Unsubscribe</h1>
+    <p class="description">Enter your email address below to unsubscribe from our mailing list.</p>
+    <div class="manual-form">
+      <input type="email" id="manualEmail" placeholder="your@email.com" />
+      <button id="manualBtn" onclick="handleManual()">Unsubscribe</button>
+    </div>
+    <div class="error-msg" id="manualError"></div>
+  </div>
+  <div class="form-container" id="formState">
+    <div class="icon">📧</div>
+    <h1>Unsubscribe</h1>
+    <p class="description">You are about to unsubscribe the following email from all future communications:</p>
+    <div class="email-display" id="emailDisplay"></div>
+    <div class="error-msg" id="errorMsg"></div>
+    <button class="btn btn-unsubscribe" id="unsubBtn" onclick="handleUnsubscribe()">Unsubscribe Me</button>
+    <div class="spinner" id="spinner"></div>
+    <p class="note">You will no longer receive emails from us after unsubscribing.</p>
+  </div>
+  <div class="success-container" id="successState">
+    <div class="success-icon">✅</div>
+    <h1>You Have Been Unsubscribed</h1>
+    <p class="description">Your email <strong id="successEmail"></strong> has been removed from our mailing list. You will no longer receive emails from us.</p>
+    <p class="note">If this was a mistake, please contact us to re-subscribe.</p>
+  </div>
+</div>
+<script>
+  var SUPABASE_URL = 'https://yuqeqricenygpsrdfswx.supabase.co';
+  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1cWVxcmljZW55Z3BzcmRmc3d4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwOTY1MjIsImV4cCI6MjA3MjY3MjUyMn0.yK9xBR-wk5wtBVk6_ne2qqlbYN1dIpM9kVdGWPEBLG8';
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  var params = new URLSearchParams(window.location.search);
+  var email = (params.get('email') || '').trim().toLowerCase();
+  if (email && email.includes('@')) {
+    document.getElementById('formState').classList.add('show');
+    document.getElementById('emailDisplay').textContent = email;
+  } else {
+    document.getElementById('noEmail').classList.add('show');
+  }
+  async function doUnsubscribe(addr) {
+    var r = await sb.from('unsubscribers').upsert({ email: addr }, { onConflict: 'email' });
+    if (r.error) throw r.error;
+    document.getElementById('formState').classList.remove('show');
+    document.getElementById('noEmail').classList.remove('show');
+    document.getElementById('successState').classList.add('show');
+    document.getElementById('successEmail').textContent = addr;
+  }
+  async function handleUnsubscribe() {
+    var btn = document.getElementById('unsubBtn');
+    var spinner = document.getElementById('spinner');
+    var errorDiv = document.getElementById('errorMsg');
+    errorDiv.classList.remove('show');
+    btn.style.display = 'none';
+    spinner.style.display = 'block';
+    try { await doUnsubscribe(email); }
+    catch (err) {
+      spinner.style.display = 'none';
+      btn.style.display = 'block';
+      errorDiv.textContent = 'Something went wrong. Please try again.';
+      errorDiv.classList.add('show');
+    }
+  }
+  async function handleManual() {
+    var inp = document.getElementById('manualEmail');
+    var btn = document.getElementById('manualBtn');
+    var errorDiv = document.getElementById('manualError');
+    var val = inp.value.toLowerCase().trim();
+    errorDiv.classList.remove('show');
+    if (!val || !val.includes('@')) {
+      errorDiv.textContent = 'Please enter a valid email address.';
+      errorDiv.classList.add('show');
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+    try { await doUnsubscribe(val); }
+    catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Unsubscribe';
+      errorDiv.textContent = 'Something went wrong. Please try again.';
+      errorDiv.classList.add('show');
+    }
+  }
+</script>
+</body>
+</html>

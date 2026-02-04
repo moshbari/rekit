@@ -170,29 +170,23 @@ function App() {
       // Save webhook URL for next time
       localStorage.setItem('webhook_url', webhookUrl.trim());
 
-      // Build CSV with CRLF line endings — exactly like a real .csv file from disk
+      // Build CSV with CRLF line endings
       const csvContent = 'email\r\n' + cleanedList.join('\r\n') + '\r\n';
-      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const blob = new Blob([csvContent], { type: 'application/octet-stream' });
 
-      // Send raw binary through our proxy — webhook URL in header, CSV as raw body
-      const response = await fetch('/api/send-webhook', {
+      // Send directly to n8n — same as Postman binary mode
+      const response = await fetch(webhookUrl.trim(), {
         method: 'POST',
-        headers: { 'X-Webhook-URL': webhookUrl.trim() },
         body: blob,
+        headers: { 'Content-Type': 'application/octet-stream' },
       });
 
       if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setSendStatus('success');
-          showToast(`Sent ${cleanedList.length} emails to WebinarKit via n8n`);
-        } else {
-          setSendStatus('error');
-          showToast(`Webhook returned error: ${data.status} ${data.message}`, 'error');
-        }
+        setSendStatus('success');
+        showToast(`Sent ${cleanedList.length} emails to WebinarKit via n8n`);
       } else {
         setSendStatus('error');
-        showToast(`Send failed: ${response.status}`, 'error');
+        showToast(`Webhook returned error: ${response.status} ${response.statusText}`, 'error');
       }
     } catch (err) {
       console.error('Webhook send failed:', err);

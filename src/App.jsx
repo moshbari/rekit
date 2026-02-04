@@ -142,7 +142,7 @@ function App() {
 
   const downloadCSV = () => {
     if (!cleanedList) return;
-    const csvContent = 'email\n' + cleanedList.join('\n');
+    const csvContent = 'email\r\n' + cleanedList.join('\r\n') + '\r\n';
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -170,9 +170,9 @@ function App() {
       // Save webhook URL for next time
       localStorage.setItem('webhook_url', webhookUrl.trim());
 
-      // Build the CSV exactly like Postman sends it — binary body
-      const csvContent = 'email\n' + cleanedList.join('\n');
-      const blob = new Blob([csvContent], { type: 'application/octet-stream' });
+      // Build CSV with CRLF line endings — exactly like a real .csv file from disk
+      const csvContent = 'email\r\n' + cleanedList.join('\r\n') + '\r\n';
+      const blob = new Blob([csvContent], { type: 'text/csv' });
 
       // Send raw binary through our proxy — webhook URL in header, CSV as raw body
       const response = await fetch('/api/send-webhook', {

@@ -294,3 +294,88 @@
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* =============================================
+   ADD THIS CSS TO THE BOTTOM OF YOUR App.css
+   ============================================= */
+
+/* Unsubscribe Link Box */
+.unsub-link-box {
+  background: #252830;
+  border: 1px solid #3a3d4a;
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.unsub-link-code {
+  flex: 1;
+  color: #60a5fa;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.btn-copy {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.btn-copy:hover {
+  background: #2563eb;
+}
+
+.btn-copy-success {
+  background: #16a34a !important;
+}
+
+/* Instructions */
+.unsub-link-instructions {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #2a2d37;
+}
+
+.instructions-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin-bottom: 12px;
+}
+
+.instruction-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #9ca3af;
+  line-height: 1.5;
+}
+
+.step-number {
+  background: #3b82f6;
+  color: white;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 1px;
+}

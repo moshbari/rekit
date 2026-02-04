@@ -1,23 +1,25 @@
 export async function onRequestPost(context) {
   try {
-    const body = await context.request.json();
-    const { webhookUrl, csvData } = body;
+    // Webhook URL comes in the header, raw CSV is the body
+    const webhookUrl = context.request.headers.get('X-Webhook-URL');
 
-    if (!webhookUrl || !csvData) {
-      return new Response(JSON.stringify({ error: 'Missing webhookUrl or csvData' }), {
+    if (!webhookUrl) {
+      return new Response(JSON.stringify({ error: 'Missing X-Webhook-URL header' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    // Build a proper file upload — exactly like Postman binary file upload
-    const formData = new FormData();
-    const blob = new Blob([csvData], { type: 'text/csv' });
-    formData.append('file', blob, 'leads.csv');
+    // Read the raw body as-is (binary)
+    const rawBody = await context.request.arrayBuffer();
 
+    // Forward directly to n8n — identical to Postman binary upload
     const response = await fetch(webhookUrl, {
       method: 'POST',
-      body: formData,
+      body: rawBody,
+      headers: {
+        'Content-Type': 'application/octet-stream',
+      },
     });
 
     const responseText = await response.text();

@@ -1,6 +1,5 @@
 export async function onRequestPost(context) {
   try {
-    // Webhook URL comes in the header, raw CSV is the body
     const webhookUrl = context.request.headers.get('X-Webhook-URL');
 
     if (!webhookUrl) {
@@ -10,15 +9,16 @@ export async function onRequestPost(context) {
       });
     }
 
-    // Read the raw body as-is (binary)
+    // Buffer the entire body
     const rawBody = await context.request.arrayBuffer();
 
-    // Forward directly to n8n — identical to Postman binary upload
+    // Forward to n8n with explicit Content-Length
     const response = await fetch(webhookUrl, {
       method: 'POST',
       body: rawBody,
       headers: {
-        'Content-Type': 'application/octet-stream',
+        'Content-Type': 'text/csv',
+        'Content-Length': rawBody.byteLength.toString(),
       },
     });
 

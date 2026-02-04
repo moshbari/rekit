@@ -17,10 +17,24 @@ function App() {
   const [webhookUrl, setWebhookUrl] = useState('');
   const [sending, setSending] = useState(false);
   const [sendStatus, setSendStatus] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  const UNSUB_LINK = 'https://rekit.pages.dev/unsubscribe/?email={{email}}';
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
+  };
+
+  const copyUnsubLink = async () => {
+    try {
+      await navigator.clipboard.writeText(UNSUB_LINK);
+      setCopied(true);
+      showToast('Unsubscribe link copied!');
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      showToast('Failed to copy. Try selecting and copying manually.', 'error');
+    }
   };
 
   useEffect(() => {
@@ -170,7 +184,7 @@ function App() {
       // Save webhook URL for next time
       localStorage.setItem('webhook_url', webhookUrl.trim());
 
-      // Build CSV with CRLF line endings
+      // Build CSV with CRLF line endings — exactly like a real .csv file from disk
       const csvContent = 'email\r\n' + cleanedList.join('\r\n') + '\r\n';
       const blob = new Blob([csvContent], { type: 'application/octet-stream' });
 
@@ -314,7 +328,7 @@ function App() {
           )}
         </div>
 
-        {/* RIGHT — Unsubscribers */}
+        {/* RIGHT — Unsubscribers + Unsub Link */}
         <div className="right-col">
           <div className="card">
             <h2>🚫 Unsubscribers <span className="unsub-count">({unsubscribers.length})</span></h2>
@@ -360,6 +374,63 @@ function App() {
             {unsubscribers.length > 0 && (
               <button onClick={clearAllUnsubscribers} className="btn-clear-all">Clear All Unsubscribers</button>
             )}
+          </div>
+
+          {/* UNSUBSCRIBE LINK SECTION */}
+          <div className="card">
+            <h2>🔗 Unsubscribe Link</h2>
+            <p className="unsub-desc">Add this link to the bottom of your WebinarKit emails so people can unsubscribe themselves. It automatically saves to your database above.</p>
+
+            <div className="unsub-link-box">
+              <code className="unsub-link-code">{UNSUB_LINK}</code>
+              <button onClick={copyUnsubLink} className={`btn-copy ${copied ? 'btn-copy-success' : ''}`}>
+                {copied ? '✓ Copied!' : '📋 Copy Link'}
+              </button>
+            </div>
+
+            <div className="unsub-link-instructions">
+              <h3 className="instructions-title">📝 How to use in WebinarKit:</h3>
+              <div className="instruction-step">
+                <span className="step-number">1</span>
+                <span>Go to your WebinarKit email settings</span>
+              </div>
+              <div className="instruction-step">
+                <span className="step-number">2</span>
+                <span>Edit any email template (reminders, follow-ups, etc.)</span>
+              </div>
+              <div className="instruction-step">
+                <span className="step-number">3</span>
+                <span>At the bottom of the email body, paste this HTML:</span>
+              </div>
+
+              <div className="unsub-link-box" style={{ marginTop: '8px' }}>
+                <code className="unsub-link-code" style={{ fontSize: '12px' }}>
+                  {'<a href="https://rekit.pages.dev/unsubscribe/?email={{email}}">Unsubscribe</a>'}
+                </code>
+                <button
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText('<a href="https://rekit.pages.dev/unsubscribe/?email={{email}}">Unsubscribe</a>');
+                      showToast('HTML link copied!');
+                    } catch (err) {
+                      showToast('Failed to copy', 'error');
+                    }
+                  }}
+                  className="btn-copy"
+                >
+                  📋 Copy HTML
+                </button>
+              </div>
+
+              <div className="instruction-step" style={{ marginTop: '12px' }}>
+                <span className="step-number">4</span>
+                <span>Save. Now every email will have an unsubscribe link that auto-adds to your database!</span>
+              </div>
+            </div>
+
+            <p className="unsub-hint" style={{ marginTop: '16px' }}>
+              💡 <strong>{'{{email}}'}</strong> is a WebinarKit variable — it automatically becomes the recipient's real email address.
+            </p>
           </div>
         </div>
       </div>

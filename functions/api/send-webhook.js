@@ -9,16 +9,33 @@ export async function onRequestPost(context) {
       });
     }
 
-    // Buffer the entire body
-    const rawBody = await context.request.arrayBuffer();
+    // Read the raw CSV bytes from the request
+    const csvBytes = await context.request.arrayBuffer();
 
-    // Forward to n8n with explicit Content-Length
+    // Build a multipart/form-data file upload manually
+    // This is exactly how browsers upload files via <input type="file">
+    const boundary = '----WebKitFormBoundary' + Math.random().toString(36).slice(2);
+    const encoder = new TextEncoder();
+
+    const prefix = encoder.encode(
+      '--' + boundary + '\r\n' +
+      'Content-Disposition: form-data; name="data"; filename="data.csv"\r\n' +
+      'Content-Type: text/csv\r\n' +
+      '\r\n'
+    );
+    const suffix = encoder.encode('\r\n--' + boundary + '--\r\n');
+
+    // Combine: prefix + csv bytes + suffix
+    const combined = new Uint8Array(prefix.length + csvBytes.byteLength + suffix.length);
+    combined.set(prefix, 0);
+    combined.set(new Uint8Array(csvBytes), prefix.length);
+    combined.set(suffix, prefix.length + csvBytes.byteLength);
+
     const response = await fetch(webhookUrl, {
       method: 'POST',
-      body: rawBody,
+      body: combined.buffer,
       headers: {
-        'Content-Type': 'text/csv',
-        'Content-Length': rawBody.byteLength.toString(),
+        'Content-Type': 'multipart/form-data; boundary=' + boundary,
       },
     });
 

@@ -172,15 +172,13 @@ function App() {
 
       // Build the CSV exactly like Postman sends it — binary body
       const csvContent = 'email\n' + cleanedList.join('\n');
+      const blob = new Blob([csvContent], { type: 'application/octet-stream' });
 
-      // Send through our server-side proxy to avoid CORS issues
+      // Send raw binary through our proxy — webhook URL in header, CSV as raw body
       const response = await fetch('/api/send-webhook', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          webhookUrl: webhookUrl.trim(),
-          csvData: csvContent,
-        }),
+        headers: { 'X-Webhook-URL': webhookUrl.trim() },
+        body: blob,
       });
 
       if (response.ok) {

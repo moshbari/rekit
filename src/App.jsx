@@ -266,6 +266,39 @@ function App() {
       <div className="main-grid">
         {/* LEFT — Sources */}
         <div className="left-col">
+          <div className="card" style={{ marginBottom: '20px' }}>
+            <div className="webhook-section">
+              <h3 className="webhook-title">🚀 Send to WebinarKit</h3>
+              <p className="webhook-desc">Send the cleaned list directly to your n8n webhook — no Postman needed.</p>
+              <div className="webhook-input-row">
+                <input
+                  type="text"
+                  value={webhookUrl}
+                  onChange={(e) => setWebhookUrl(e.target.value)}
+                  placeholder="https://moshbari.cloud/webhook/..."
+                  className="webhook-input"
+                  disabled={sending}
+                />
+                <button
+                  onClick={sendToWebhook}
+                  className={`btn-send ${sendStatus === 'success' ? 'btn-send-success' : ''} ${!cleanedList || cleanedList.length === 0 ? 'btn-send-disabled' : ''}`}
+                  style={!cleanedList || cleanedList.length === 0 ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
+                  disabled={sending || !cleanedList || cleanedList.length === 0}
+                >
+                  {sending ? 'Sending...' : sendStatus === 'success' ? '✓ Sent!' : '🚀 Send'}
+                </button>
+              </div>
+              {(!cleanedList || cleanedList.length === 0) && (
+                <p className="webhook-helper-text" style={{ color: '#6b7280', fontSize: '12px', marginTop: '8px', fontStyle: 'italic' }}>Paste your webhook URL above. Send button activates after emails are cleaned.</p>
+              )}
+              {sendStatus === 'success' && (
+                <p className="send-status success">✓ {cleanedList.length} emails sent successfully to your webhook</p>
+              )}
+              {sendStatus === 'error' && (
+                <p className="send-status error">✕ Send failed — check the webhook URL and try again</p>
+              )}
+            </div>
+          </div>
           <div className="card">
             <div className="card-header">
               <h2>📋 Email Sources</h2>
@@ -317,34 +350,7 @@ function App() {
               </div>
               <button onClick={downloadCSV} className="btn-download">⬇ Download Clean CSV ({stats.finalCount} emails)</button>
 
-              {/* Send to WebinarKit */}
-              <div className="webhook-section">
-                <h3 className="webhook-title">🚀 Send to WebinarKit</h3>
-                <p className="webhook-desc">Send the cleaned list directly to your n8n webhook — no Postman needed.</p>
-                <div className="webhook-input-row">
-                  <input
-                    type="text"
-                    value={webhookUrl}
-                    onChange={(e) => setWebhookUrl(e.target.value)}
-                    placeholder="https://moshbari.cloud/webhook/..."
-                    className="webhook-input"
-                    disabled={sending}
-                  />
-                  <button
-                    onClick={sendToWebhook}
-                    className={`btn-send ${sendStatus === 'success' ? 'btn-send-success' : ''}`}
-                    disabled={sending || !cleanedList}
-                  >
-                    {sending ? 'Sending...' : sendStatus === 'success' ? '✓ Sent!' : '🚀 Send'}
-                  </button>
-                </div>
-                {sendStatus === 'success' && (
-                  <p className="send-status success">✓ {cleanedList.length} emails sent successfully to your webhook</p>
-                )}
-                {sendStatus === 'error' && (
-                  <p className="send-status error">✕ Send failed — check the webhook URL and try again</p>
-                )}
-              </div>
+              
 
               {cleanedList && cleanedList.length > 0 && (
                 <div className="preview-box">

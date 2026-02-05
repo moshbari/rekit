@@ -17,7 +17,9 @@ function App() {
   const [webhookUrl, setWebhookUrl] = useState('');
   const [sending, setSending] = useState(false);
   const [sendStatus, setSendStatus] = useState(null);
+  const [activeTab, setActiveTab] = useState('unsub');
   const [copied, setCopied] = useState(false);
+  const [copiedHtml, setCopiedHtml] = useState(false);
   const [webinarId, setWebinarId] = useState('');
   const [jsonReady, setJsonReady] = useState(false);
 
@@ -53,7 +55,18 @@ function App() {
       showToast('Unsubscribe link copied!');
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      showToast('Failed to copy. Try selecting and copying manually.', 'error');
+      showToast('Failed to copy', 'error');
+    }
+  };
+
+  const copyHtmlLink = async () => {
+    try {
+      await navigator.clipboard.writeText('We\'d hate to see you go, but if you want to stop all future emails, <a href="https://rekit.pages.dev/unsubscribe/?email={{email}}">click here to opt out</a>.');
+      setCopiedHtml(true);
+      showToast('HTML copied!');
+      setTimeout(() => setCopiedHtml(false), 2000);
+    } catch (err) {
+      showToast('Failed to copy', 'error');
     }
   };
 
@@ -155,25 +168,21 @@ function App() {
     setProcessing(true);
     let allEmails = [];
     let totalRaw = 0;
-
     sources.forEach((source) => {
       const emails = extractEmails(source.emails);
       totalRaw += emails.length;
       allEmails = [...allEmails, ...emails];
     });
-
     if (allEmails.length === 0) {
       showToast('No emails found. Paste your email lists first.', 'error');
       setProcessing(false);
       return;
     }
-
     const unique = [...new Set(allEmails)];
     const duplicatesRemoved = totalRaw - unique.length;
     const unsubSet = new Set(unsubscribers);
     const cleaned = unique.filter((email) => !unsubSet.has(email));
     const unsubsRemoved = unique.length - cleaned.length;
-
     setStats({ totalRaw, duplicatesRemoved, unsubsRemoved, finalCount: cleaned.length });
     setCleanedList(cleaned);
     setProcessing(false);
@@ -201,25 +210,17 @@ function App() {
       showToast('Enter your n8n webhook URL', 'error');
       return;
     }
-
     setSending(true);
     setSendStatus(null);
-
     try {
-      // Save webhook URL for next time
       localStorage.setItem('webhook_url', webhookUrl.trim());
-
-      // Build CSV with CRLF line endings — exactly like a real .csv file from disk
       const csvContent = 'email\r\n' + cleanedList.join('\r\n') + '\r\n';
       const blob = new Blob([csvContent], { type: 'application/octet-stream' });
-
-      // Send directly to n8n — same as Postman binary mode
       const response = await fetch(webhookUrl.trim(), {
         method: 'POST',
         body: blob,
         headers: { 'Content-Type': 'application/octet-stream' },
       });
-
       if (response.ok) {
         setSendStatus('success');
         showToast(`Sent ${cleanedList.length} emails to WebinarKit via n8n`);
@@ -237,6 +238,12 @@ function App() {
   };
 
   const filteredUnsubs = unsubscribers.filter((e) => e.toLowerCase().includes(searchUnsub.toLowerCase()));
+
+  const tabs = [
+    { id: 'unsub', label: '🚫 Unsubscribers', count: unsubscribers.length },
+    { id: 'workflow', label: '⚙️ Workflow' },
+    { id: 'link', label: '🔗 Unsub Link' },
+  ];
 
   if (loading) {
     return (
@@ -264,7 +271,6 @@ function App() {
               <h2>📋 Email Sources</h2>
               <button onClick={addSource} className="btn-secondary">+ Add Source</button>
             </div>
-
             <div className="sources-list">
               {sources.map((source) => (
                 <div key={source.id} className="source-block">
@@ -295,7 +301,6 @@ function App() {
                 </div>
               ))}
             </div>
-
             <button onClick={processAndExport} className="btn-process" disabled={processing}>
               {processing ? 'Processing...' : '🔄 Process & Clean List'}
             </button>
@@ -340,6 +345,7 @@ function App() {
                   <p className="send-status error">✕ Send failed — check the webhook URL and try again</p>
                 )}
               </div>
+
               {cleanedList && cleanedList.length > 0 && (
                 <div className="preview-box">
                   <p className="preview-label">Preview (first 10):</p>
@@ -353,149 +359,154 @@ function App() {
           )}
         </div>
 
-        {/* RIGHT — Unsubscribers + Unsub Link */}
+        {/* RIGHT — Tabbed Panel */}
         <div className="right-col">
-          <div className="card">
-            <h2>🚫 Unsubscribers <span className="unsub-count">({unsubscribers.length})</span></h2>
-            <p className="unsub-desc">Automatically removed from every export. Stored in your Supabase database — shared across all your tools.</p>
-
-            <div className="unsub-input-row">
-              <input
-                type="text"
-                value={unsubEmail}
-                onChange={(e) => setUnsubEmail(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addUnsubscriber()}
-                placeholder="Enter email to unsubscribe..."
-                className="unsub-input"
-                disabled={addingUnsub}
-              />
-              <button onClick={addUnsubscriber} className="btn-unsub-add" disabled={addingUnsub}>
-                {addingUnsub ? '...' : 'Add'}
-              </button>
-            </div>
-            <p className="unsub-hint">You can paste multiple emails at once</p>
-
-            {unsubscribers.length > 5 && (
-              <input
-                type="text"
-                value={searchUnsub}
-                onChange={(e) => setSearchUnsub(e.target.value)}
-                placeholder="Search unsubscribers..."
-                className="search-input"
-              />
-            )}
-
-            <div className="unsub-list">
-              {filteredUnsubs.length === 0 && unsubscribers.length === 0 && <p className="empty-state">No unsubscribers yet. Add emails above.</p>}
-              {filteredUnsubs.length === 0 && unsubscribers.length > 0 && <p className="empty-state">No matches found.</p>}
-              {filteredUnsubs.map((email) => (
-                <div key={email} className="unsub-item">
-                  <span className="unsub-email">{email}</span>
-                  <button onClick={() => removeUnsubscriber(email)} className="btn-x small">✕</button>
-                </div>
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            {/* Tab Bar */}
+            <div style={{ display: 'flex', background: '#151820', borderBottom: '1px solid #2a2d37' }}>
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    flex: 1,
+                    padding: '12px 8px',
+                    border: 'none',
+                    background: activeTab === tab.id ? '#1a1d27' : 'transparent',
+                    color: activeTab === tab.id ? '#fff' : '#6b7280',
+                    fontSize: '13px',
+                    fontWeight: activeTab === tab.id ? '600' : '400',
+                    cursor: 'pointer',
+                    borderBottom: activeTab === tab.id ? '2px solid #3b82f6' : '2px solid transparent',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {tab.label}
+                  {tab.count !== undefined && (
+                    <span style={{ marginLeft: '4px', fontSize: '11px', color: activeTab === tab.id ? '#9ca3af' : '#4b5563' }}>
+                      ({tab.count})
+                    </span>
+                  )}
+                </button>
               ))}
             </div>
 
-            {unsubscribers.length > 0 && (
-              <button onClick={clearAllUnsubscribers} className="btn-clear-all">Clear All Unsubscribers</button>
-            )}
-          </div>
+            {/* Tab Content */}
+            <div style={{ padding: '20px' }}>
 
-          {/* N8N WORKFLOW GENERATOR */}
-          <div className="card">
-            <h2>⚙️ n8n Workflow Generator</h2>
-            <p className="unsub-desc">Generate a ready-to-import n8n workflow JSON for a new webinar. Just paste your WebinarKit Webinar ID below.</p>
+              {/* TAB 1: UNSUBSCRIBERS */}
+              {activeTab === 'unsub' && (
+                <div>
+                  <p className="unsub-desc">Automatically removed from every export. Stored in your Supabase database.</p>
+                  <div className="unsub-input-row">
+                    <input
+                      type="text"
+                      value={unsubEmail}
+                      onChange={(e) => setUnsubEmail(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addUnsubscriber()}
+                      placeholder="Enter email to unsubscribe..."
+                      className="unsub-input"
+                      disabled={addingUnsub}
+                    />
+                    <button onClick={addUnsubscriber} className="btn-unsub-add" disabled={addingUnsub}>
+                      {addingUnsub ? '...' : 'Add'}
+                    </button>
+                  </div>
+                  <p className="unsub-hint">You can paste multiple emails at once</p>
+                  {unsubscribers.length > 5 && (
+                    <input
+                      type="text"
+                      value={searchUnsub}
+                      onChange={(e) => setSearchUnsub(e.target.value)}
+                      placeholder="Search unsubscribers..."
+                      className="search-input"
+                    />
+                  )}
+                  <div className="unsub-list">
+                    {filteredUnsubs.length === 0 && unsubscribers.length === 0 && <p className="empty-state">No unsubscribers yet. Add emails above.</p>}
+                    {filteredUnsubs.length === 0 && unsubscribers.length > 0 && <p className="empty-state">No matches found.</p>}
+                    {filteredUnsubs.map((email) => (
+                      <div key={email} className="unsub-item">
+                        <span className="unsub-email">{email}</span>
+                        <button onClick={() => removeUnsubscriber(email)} className="btn-x small">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                  {unsubscribers.length > 0 && (
+                    <button onClick={clearAllUnsubscribers} className="btn-clear-all">Clear All Unsubscribers</button>
+                  )}
+                </div>
+              )}
 
-            <div className="unsub-input-row" style={{ marginTop: '12px' }}>
-              <input
-                type="text"
-                value={webinarId}
-                onChange={(e) => setWebinarId(e.target.value)}
-                placeholder="Paste Webinar ID here..."
-                className="unsub-input"
-              />
-              <button onClick={generateN8nWorkflow} className={`btn-unsub-add ${jsonReady ? 'btn-send-success' : ''}`} style={{ minWidth: '120px' }}>
-                {jsonReady ? '✓ Done!' : '⬇ Download'}
-              </button>
+              {/* TAB 2: WORKFLOW */}
+              {activeTab === 'workflow' && (
+                <div>
+                  <p className="unsub-desc">Generate a ready-to-import n8n workflow JSON for a new webinar. Paste your WebinarKit Webinar ID below.</p>
+                  <div className="unsub-input-row" style={{ marginTop: '12px' }}>
+                    <input
+                      type="text"
+                      value={webinarId}
+                      onChange={(e) => setWebinarId(e.target.value)}
+                      placeholder="Paste Webinar ID here..."
+                      className="unsub-input"
+                    />
+                    <button
+                      onClick={generateN8nWorkflow}
+                      className={`btn-unsub-add ${jsonReady ? 'btn-send-success' : ''}`}
+                      style={{ minWidth: '110px', background: jsonReady ? '#16a34a' : '#3b82f6' }}
+                    >
+                      {jsonReady ? '✓ Done!' : '⬇ Download'}
+                    </button>
+                  </div>
+                  <p className="unsub-hint" style={{ marginTop: '8px' }}>Find your Webinar ID in WebinarKit → Settings → the ID in the URL</p>
+                  <div style={{ borderTop: '1px solid #2a2d37', marginTop: '16px', paddingTop: '16px' }}>
+                    <p style={{ color: '#e0e0e0', fontSize: '13px', fontWeight: '600', marginBottom: '12px' }}>📝 After downloading:</p>
+                    {['Open n8n → Workflows page', '"Import from File" → select the JSON', 'Connect your WebinarKit API credential', 'Activate the workflow — done!'].map((step, i) => (
+                      <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', marginBottom: '8px' }}>
+                        <span style={{ background: '#3b82f6', color: 'white', width: '20px', height: '20px', minWidth: '20px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700' }}>{i + 1}</span>
+                        <span style={{ color: '#9ca3af', fontSize: '13px', lineHeight: '1.4' }}>{step}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: UNSUB LINK */}
+              {activeTab === 'link' && (
+                <div>
+                  <p className="unsub-desc">Add this link to the bottom of your WebinarKit emails so people can unsubscribe themselves.</p>
+
+                  {/* Raw link */}
+                  <div style={{ background: '#252830', border: '1px solid #3a3d4a', borderRadius: '8px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', marginTop: '12px', marginBottom: '12px' }}>
+                    <code style={{ flex: 1, color: '#60a5fa', fontSize: '12px', fontFamily: 'monospace', wordBreak: 'break-all', lineHeight: '1.4' }}>{UNSUB_LINK}</code>
+                    <button onClick={copyUnsubLink} style={{ background: copied ? '#16a34a' : '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', padding: '7px 14px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }}>
+                      {copied ? '✓ Copied!' : '📋 Copy'}
+                    </button>
+                  </div>
+
+                  {/* Email text preview */}
+                  <p style={{ color: '#e0e0e0', fontSize: '13px', fontWeight: '600', marginBottom: '8px' }}>Paste this text in your emails:</p>
+                  <div style={{ background: '#252830', border: '1px solid #3a3d4a', borderRadius: '8px', padding: '12px 14px', marginBottom: '12px' }}>
+                    <p style={{ color: '#d1d5db', fontSize: '13px', lineHeight: '1.5', margin: 0 }}>
+                      We'd hate to see you go, but if you want to stop all future emails, <span style={{ color: '#60a5fa', textDecoration: 'underline' }}>click here to opt out</span>.
+                    </p>
+                  </div>
+
+                  {/* Copy HTML */}
+                  <div style={{ background: '#252830', border: '1px solid #3a3d4a', borderRadius: '8px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                    <code style={{ flex: 1, color: '#60a5fa', fontSize: '11px', fontFamily: 'monospace', wordBreak: 'break-all', lineHeight: '1.4' }}>
+                      {'<a href="' + UNSUB_LINK + '">click here to opt out</a>'}
+                    </code>
+                    <button onClick={copyHtmlLink} style={{ background: copiedHtml ? '#16a34a' : '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', padding: '7px 14px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }}>
+                      {copiedHtml ? '✓ Copied!' : '📋 HTML'}
+                    </button>
+                  </div>
+
+                  <p className="unsub-hint">💡 <strong>{'{{email}}'}</strong> is a WebinarKit variable — it becomes the recipient's real email.</p>
+                </div>
+              )}
+
             </div>
-            <p className="unsub-hint" style={{ marginTop: '8px' }}>Find your Webinar ID in WebinarKit → Webinar Settings → the ID in the URL bar</p>
-
-            <div className="unsub-link-instructions" style={{ marginTop: '16px' }}>
-              <h3 className="instructions-title">📝 After downloading:</h3>
-              <div className="instruction-step">
-                <span className="step-number">1</span>
-                <span>Open n8n and go to your Workflows page</span>
-              </div>
-              <div className="instruction-step">
-                <span className="step-number">2</span>
-                <span>Click "Import from File" and select the downloaded JSON</span>
-              </div>
-              <div className="instruction-step">
-                <span className="step-number">3</span>
-                <span>Connect your WebinarKit API credential in the HTTP Request node</span>
-              </div>
-              <div className="instruction-step">
-                <span className="step-number">4</span>
-                <span>Activate the workflow — done!</span>
-              </div>
-            </div>
-          </div>
-
-          {/* UNSUBSCRIBE LINK SECTION */}
-          <div className="card">
-            <h2>🔗 Unsubscribe Link</h2>
-            <p className="unsub-desc">Add this link to the bottom of your WebinarKit emails so people can unsubscribe themselves. It automatically saves to your database above.</p>
-
-            <div className="unsub-link-box">
-              <code className="unsub-link-code">{UNSUB_LINK}</code>
-              <button onClick={copyUnsubLink} className={`btn-copy ${copied ? 'btn-copy-success' : ''}`}>
-                {copied ? '✓ Copied!' : '📋 Copy Link'}
-              </button>
-            </div>
-
-            <div className="unsub-link-instructions">
-              <h3 className="instructions-title">📝 How to use in WebinarKit:</h3>
-              <div className="instruction-step">
-                <span className="step-number">1</span>
-                <span>Go to your WebinarKit email settings</span>
-              </div>
-              <div className="instruction-step">
-                <span className="step-number">2</span>
-                <span>Edit any email template (reminders, follow-ups, etc.)</span>
-              </div>
-              <div className="instruction-step">
-                <span className="step-number">3</span>
-                <span>At the bottom of the email body, paste this HTML:</span>
-              </div>
-
-              <div className="unsub-link-box" style={{ marginTop: '8px' }}>
-                <code className="unsub-link-code" style={{ fontSize: '12px' }}>
-                  {'<a href="https://rekit.pages.dev/unsubscribe/?email={{email}}">Unsubscribe</a>'}
-                </code>
-                <button
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText('<a href="https://rekit.pages.dev/unsubscribe/?email={{email}}">Unsubscribe</a>');
-                      showToast('HTML link copied!');
-                    } catch (err) {
-                      showToast('Failed to copy', 'error');
-                    }
-                  }}
-                  className="btn-copy"
-                >
-                  📋 Copy HTML
-                </button>
-              </div>
-
-              <div className="instruction-step" style={{ marginTop: '12px' }}>
-                <span className="step-number">4</span>
-                <span>Save. Now every email will have an unsubscribe link that auto-adds to your database!</span>
-              </div>
-            </div>
-
-            <p className="unsub-hint" style={{ marginTop: '16px' }}>
-              💡 <strong>{'{{email}}'}</strong> is a WebinarKit variable — it automatically becomes the recipient's real email address.
-            </p>
           </div>
         </div>
       </div>

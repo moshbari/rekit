@@ -104,6 +104,11 @@ function App() {
   };
 
   const removeUnsubscriber = async (email) => {
+    const typed = window.prompt(`Type REMOVE to confirm removing ${email} from unsubscribers:`);
+    if (!typed || typed.trim().toUpperCase() !== 'REMOVE') {
+      showToast('Removal cancelled', 'error');
+      return;
+    }
     try {
       const { error } = await supabase.from('unsubscribers').delete().eq('email', email);
       if (error) throw error;

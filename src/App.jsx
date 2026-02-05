@@ -35,17 +35,31 @@ function App() {
       showToast('Please enter a WebinarKit Webinar ID', 'error');
       return;
     }
-    const workflow = {"name":"WebinarKit Lead Import","nodes":[{"parameters":{"method":"POST","url":"https://webinarkit.com/api/webinar/registration/" + webinarId.trim(),"authentication":"predefinedCredentialType","nodeCredentialType":"httpBearerAuth","sendBody":true,"bodyParameters":{"parameters":[{"name":"email","value":"={{ $('Replace Me').item.json.email }}"},{"name":"date","value":"={{ $json.time_iso }}"},{"name":"=fullDate","value":"={{ $json.fullDate }}"}]},"options":{}},"type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[976,-528],"id":"dfe2d578-f612-4919-bab4-5061f6cf1cec","name":"HTTP Request1","credentials":{"httpBearerAuth":{"id":"uClZpdTn8Q8mpnry","name":"webinarkit"}}},{"parameters":{"jsCode":"const now = DateTime.fromISO($now);\nconst nyTime = now.setZone('America/New_York').plus({ days: 1 }).set({ hour: 11, minute: 0, second: 0, millisecond: 0 });\nconst time_iso = nyTime.toUTC().toISO();\nconst day = nyTime.day;\nconst ordinal = day === 1 || day === 21 || day === 31 ? 'st' : day === 2 || day === 22 ? 'nd' : day === 3 || day === 23 ? 'rd' : 'th';\nconst fullDate = `${nyTime.toFormat('cccc, LLLL')} ${day}${ordinal} at ${nyTime.toFormat('hh:mm a')} ET`;\nreturn [{ json: { time_iso, fullDate } }];"},"type":"n8n-nodes-base.code","typeVersion":2,"position":[752,-592],"id":"f596946d-c592-4fad-9efd-f0763b733dd4","name":"Code in JavaScript"},{"parameters":{"options":{}},"type":"n8n-nodes-base.extractFromFile","typeVersion":1.1,"position":[-144,-528],"id":"c2366e1e-fc6a-4d36-af18-b58e7bc3cb24","name":"Extract from File"},{"parameters":{"options":{}},"type":"n8n-nodes-base.splitInBatches","typeVersion":3,"position":[80,-528],"id":"688b9e72-476d-4c19-bcdc-c103d0a5afab","name":"Loop Over Items"},{"parameters":{},"type":"n8n-nodes-base.noOp","name":"Replace Me","typeVersion":1,"position":[304,-592],"id":"8b20d906-8580-440c-bea4-4cb9081af2d2"},{"parameters":{"amount":"=5"},"type":"n8n-nodes-base.wait","typeVersion":1.1,"position":[528,-592],"id":"185b13ed-30d1-4d48-b219-61ff296c857c","name":"Wait1","webhookId":"608699de-7848-4c0b-9896-d00e41162e54"},{"parameters":{"httpMethod":"POST","path":"BurstAI","options":{}},"type":"n8n-nodes-base.webhook","typeVersion":2.1,"position":[-368,-528],"id":"244b642f-bccf-4cd9-b8c9-c540341e2f4f","name":"Webhook","webhookId":"836de951-4a97-49f4-8b53-71e2b03fced5"}],"connections":{"Code in JavaScript":{"main":[[{"node":"HTTP Request1","type":"main","index":0}]]},"Extract from File":{"main":[[{"node":"Loop Over Items","type":"main","index":0}]]},"Loop Over Items":{"main":[[],[{"node":"Replace Me","type":"main","index":0}]]},"Replace Me":{"main":[[{"node":"Wait1","type":"main","index":0}]]},"Wait1":{"main":[[{"node":"Code in JavaScript","type":"main","index":0}]]},"HTTP Request1":{"main":[[{"node":"Loop Over Items","type":"main","index":0}]]},"Webhook":{"main":[[{"node":"Extract from File","type":"main","index":0}]]}},"active":false,"settings":{"executionOrder":"v1"}};
-    const blob = new Blob([JSON.stringify(workflow, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `n8n-webinarkit-${webinarId.trim()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setJsonReady(true);
-    showToast('Workflow JSON downloaded!');
-    setTimeout(() => setJsonReady(false), 3000);
+
+    // Generate unique webhook path in ddmmyy-hhmmss-gst format
+    const now = new Date();
+    const gst = new Date(now.getTime() + (4 * 60 * 60 * 1000)); // UTC+4 = GST
+    const dd = String(gst.getUTCDate()).padStart(2, '0');
+    const mm = String(gst.getUTCMonth() + 1).padStart(2, '0');
+    const yy = String(gst.getUTCFullYear()).slice(-2);
+    const hh = String(gst.getUTCHours()).padStart(2, '0');
+    const min = String(gst.getUTCMinutes()).padStart(2, '0');
+    const ss = String(gst.getUTCSeconds()).padStart(2, '0');
+    const webhookPath = `${dd}${mm}${yy}-${hh}${min}${ss}-gst`;
+const workflow = {"name":"WebinarKit Lead Import","nodes":[{"parameters":{"method":"POST","url":"https://webinarkit.com/api/webinar/registration/" + webinarId.trim(),"authentication":"predefinedCredentialType","nodeCredentialType":"httpBearerAuth","sendBody":true,"bodyParameters":{"parameters":[{"name":"email","value":"={{ $('Replace Me').item.json.email }}"},{"name":"date","value":"={{ $json.time_iso }}"},{"name":"=fullDate","value":"={{ $json.fullDate }}"}]},"options":{}},"type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[976,-528],"id":"dfe2d578-f612-4919-bab4-5061f6cf1cec","name":"HTTP Request1","credentials":{"httpBearerAuth":{"id":"uClZpdTn8Q8mpnry","name":"webinarkit"}}},{"parameters":{"jsCode":"const now = DateTime.fromISO($now);\nconst nyTime = now.setZone('America/New_York').plus({ days: 1 }).set({ hour: 11, minute: 0, second: 0, millisecond: 0 });\nconst time_iso = nyTime.toUTC().toISO();\nconst day = nyTime.day;\nconst ordinal = day === 1 || day === 21 || day === 31 ? 'st' : day === 2 || day === 22 ? 'nd' : day === 3 || day === 23 ? 'rd' : 'th';\nconst fullDate = `${nyTime.toFormat('cccc, LLLL')} ${day}${ordinal} at ${nyTime.toFormat('hh:mm a')} ET`;\nreturn [{ json: { time_iso, fullDate } }];"},"type":"n8n-nodes-base.code","typeVersion":2,"position":[752,-592],"id":"f596946d-c592-4fad-9efd-f0763b733dd4","name":"Code in JavaScript"},{"parameters":{"options":{}},"type":"n8n-nodes-base.extractFromFile","typeVersion":1.1,"position":[-144,-528],"id":"c2366e1e-fc6a-4d36-af18-b58e7bc3cb24","name":"Extract from File"},{"parameters":{"options":{}},"type":"n8n-nodes-base.splitInBatches","typeVersion":3,"position":[80,-528],"id":"688b9e72-476d-4c19-bcdc-c103d0a5afab","name":"Loop Over Items"},{"parameters":{},"type":"n8n-nodes-base.noOp","name":"Replace Me","typeVersion":1,"position":[304,-592],"id":"8b20d906-8580-440c-bea4-4cb9081af2d2"},{"parameters":{"amount":"=5"},"type":"n8n-nodes-base.wait","typeVersion":1.1,"position":[528,-592],"id":"185b13ed-30d1-4d48-b219-61ff296c857c","name":"Wait1","webhookId":"608699de-7848-4c0b-9896-d00e41162e54"},{"parameters":{"httpMethod":"POST","path":webhookPath,"options":{}},"type":"n8n-nodes-base.webhook","typeVersion":2.1,"position":[-368,-528],"id":"244b642f-bccf-4cd9-b8c9-c540341e2f4f","name":"Webhook","webhookId":"836de951-4a97-49f4-8b53-71e2b03fced5"}],"connections":{"Code in JavaScript":{"main":[[{"node":"HTTP Request1","type":"main","index":0}]]},"Extract from File":{"main":[[{"node":"Loop Over Items","type":"main","index":0}]]},"Loop Over Items":{"main":[[],[{"node":"Replace Me","type":"main","index":0}]]},"Replace Me":{"main":[[{"node":"Wait1","type":"main","index":0}]]},"Wait1":{"main":[[{"node":"Code in JavaScript","type":"main","index":0}]]},"HTTP Request1":{"main":[[{"node":"Loop Over Items","type":"main","index":0}]]},"Webhook":{"main":[[{"node":"Extract from File","type":"main","index":0}]]}},"active":false,"settings":{"executionOrder":"v1"}};
+    // Copy JSON to clipboard instead of downloading
+    navigator.clipboard.writeText(JSON.stringify(workflow, null, 2)).then(() => {
+      setJsonReady(true);
+      showToast('Workflow JSON copied to clipboard!');
+      setTimeout(() => setJsonReady(false), 3000);
+    }).catch(() => {
+      showToast('Failed to copy to clipboard', 'error');
+    });
+
+    // Auto-fill the webhook URL into the Send to WebinarKit field
+    const fullWebhookUrl = 'https://moshbari.cloud/webhook/' + webhookPath;
+    setWebhookUrl(fullWebhookUrl);
+    localStorage.setItem('webhook_url', fullWebhookUrl);
   };
 
   const copyUnsubLink = async () => {
@@ -461,13 +475,13 @@ function App() {
                       className={`btn-unsub-add ${jsonReady ? 'btn-send-success' : ''}`}
                       style={{ minWidth: '110px', background: jsonReady ? '#16a34a' : '#3b82f6' }}
                     >
-                      {jsonReady ? '✓ Done!' : '⬇ Download'}
+                      {jsonReady ? '✓ Copied!' : '📋 Copy Workflow'}
                     </button>
                   </div>
                   <p className="unsub-hint" style={{ marginTop: '8px' }}>Find your Webinar ID in WebinarKit → Settings → the ID in the URL</p>
                   <div style={{ borderTop: '1px solid #2a2d37', marginTop: '16px', paddingTop: '16px' }}>
-                    <p style={{ color: '#e0e0e0', fontSize: '13px', fontWeight: '600', marginBottom: '12px' }}>📝 After downloading:</p>
-                    {['Open n8n → Workflows page', '"Import from File" → select the JSON', 'Connect your WebinarKit API credential', 'Activate the workflow — done!'].map((step, i) => (
+                    <p style={{ color: '#e0e0e0', fontSize: '13px', fontWeight: '600', marginBottom: '12px' }}>📝 After copying:</p>
+                    {['Open n8n → Workflows → Import from URL or paste clipboard', 'Ctrl+V to paste the workflow JSON', 'Connect your WebinarKit API credential', 'Activate the workflow — webhook URL is already set above!'].map((step, i) => (
                       <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', marginBottom: '8px' }}>
                         <span style={{ background: '#3b82f6', color: 'white', width: '20px', height: '20px', minWidth: '20px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700' }}>{i + 1}</span>
                         <span style={{ color: '#9ca3af', fontSize: '13px', lineHeight: '1.4' }}>{step}</span>
